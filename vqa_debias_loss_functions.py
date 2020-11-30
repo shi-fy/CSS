@@ -161,6 +161,7 @@ class LearnedMixin(DebiasLossFn):
         # logits:[512,2274]
         # bias:[512,2274]
         factor = self.bias_lin.forward(hidden)  # [batch, 1]
+        # g(xi)
         factor = F.softplus(factor)
 
         bias = torch.stack([bias, 1 - bias], 2)  # [batch, n_answers, 2]
@@ -170,21 +171,21 @@ class LearnedMixin(DebiasLossFn):
         if self.smooth:
             soften_factor = F.sigmoid(self.smooth_param)
             bias = bias + soften_factor.unsqueeze(1)
-
+        # log(bi)
         bias = torch.log(bias)  # Convert to logspace 转换成对数向量
 
         # Scale by the factor
         # [batch, n_answers, 2] * [batch, 1, 1] -> [batch, n_answers, 2]
+         # 此时bias相当于g(xi)*log(bi)
         bias = bias * factor.unsqueeze(1)
-        # 此时bias相当于g(xi)*log(bi)
 
         log_prob, log_one_minus_prob = convert_sigmoid_logits_to_binary_logprobs(logits)
         # 转换成双向对数概率
         log_probs = torch.stack([log_prob, log_one_minus_prob], 2)
 
         # Add the bias in 添加偏差
-        logits = bias + log_probs
         # 这就相当于Learned-Mixin的概率公式
+        logits = bias + log_probs
 
         # Renormalize to get log probabilities 重新正则化得到log概率
         log_prob, log_one_minus_prob = renormalize_binary_logits(logits[:, :, 0], logits[:, :, 1])
@@ -197,8 +198,8 @@ class LearnedMixin(DebiasLossFn):
         bias_logprob = bias - bias_norm.unsqueeze(2)
 
         # Compute and add the entropy penalty
-        # entropy实际计算的是文章3.2.5节的公式H（x）
+        # H（x）
         entropy = -(torch.exp(bias_logprob) * bias_logprob).sum(2).mean()
 
-        # 虽然函数名是Learned-Mixin，但是实际计算结果是Learned-Mixin +H
+        # Learned-Mixin +H
         return loss + self.w * entropy
