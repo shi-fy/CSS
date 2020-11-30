@@ -317,11 +317,11 @@ def train(model, train_loader, eval_loader,args,qid2type):
                     v_mask = torch.zeros(v.shape[0], 36).cuda()
                     visual_grad_cam = visual_grad.sum(2)
                     hint_sort, hint_ind = hintscore.sort(1, descending=True)
-                    # v_ind:[512,9]
+                    # v_ind:[512,9] 分数最高的tophint个区域的id
                     v_ind = hint_ind[:, :top_hint]
-                    # v_grad:[512,9]
+                    # v_grad:[512,9] 按照id调整
                     v_grad = visual_grad_cam.gather(1, v_ind)
-
+                    # 选择关键区域，并对图像进行遮盖
                     if topv == -1:
                         # [512,9]
                         v_grad_score, v_grad_ind = v_grad.sort(1, descending=True)
