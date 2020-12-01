@@ -23,6 +23,7 @@ class WordEmbedding(nn.Module):
         self.emb.weight.data[:self.ntoken] = weight_init
 
     def forward(self, x):
+        # x:[512,14]  emb:[512,14,300]
         emb = self.emb(x)
         emb = self.dropout(emb)
         return emb
